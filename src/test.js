@@ -1,44 +1,21 @@
-const sqlite3 = require('sqlite3');
 const express = require('express');
-
-const path = require('path');
 const app = express();
 const port = 3000;
 
-app.use(express.json()); // JSON for db
-app.use(express.static('public')); // Enable serving of files from a folder "public"
+app.use(express.json());
 
-app.get('/', (req, res) => {
-  const mainPath = path.join(__dirname, '..', 'public', `main.html`);
-  res.sendFile(mainPath);
+const users = [];
+
+app.get('/users', (req, res) => {
+  res.json(users);
 });
 
-app.get('/:page', (req, res) => {
-  const pagePath = path.join(__dirname, '..', 'public', `${req.params.page}.html`);
-  res.sendFile(pagePath);
+app.post('/users', (req, res) => {
+  const user = { name: req.body.name, password: req.body.password };
+  users.push(user);
+  res.status(201).send();
 });
 
 app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+  console.log(`Server is running on port ${port}`);
 });
-
-
-const dbPath = path.join(__dirname, '..', 'db', 'test.db');
-const testdb = new sqlite3.Database(dbPath);
-
-app.post('/testing', (req, res) => {
-  // Assume the request body has a property called 'test'
-  const testData = req.body.test;
-
-  // Store the data in the database (replace 'your_table' with your actual table name)
-  testdb.run('INSERT INTO test_table (test_field) VALUES (?)', [testData], function (err) {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Error storing data in the database.' });
-    }
-
-    // Successful response
-    res.json({ success: true, message: 'Data stored in the database.' });
-  });
-});
-
-
