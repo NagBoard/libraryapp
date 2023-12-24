@@ -1,0 +1,131 @@
+<!-- librarian.html -->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Librarian Page</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+    
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+    
+            th, td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+    
+            th {
+                background-color: #f2f2f2;
+            }
+    
+            button {
+                padding: 5px 10px;
+                cursor: pointer;
+            }
+    
+            .deleteRecord {
+                width: 10%;
+            }
+
+            .changeRecord {
+                width: 10%;
+            }
+
+            #changeRecordPopup {
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: #fff;
+                padding: 20px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                z-index: 999;
+            }
+    
+            #changeRecordForm {
+                display: flex;
+                flex-direction: column;
+            }
+    
+            #changeRecordForm label {
+                margin-bottom: 10px;
+            }
+    
+            #changeRecordForm input, #changeRecordForm textarea {
+                margin-bottom: 15px;
+                padding: 8px;
+            }
+    
+            #changeRecordForm button {
+                background-color: #4CAF50;
+                color: #fff;
+                border: none;
+            }
+    
+            #changeRecordForm button[type="button"] {
+                background-color: #d9534f;
+            }
+        </style>
+    </head>
+<body>
+    <table>
+        <!-- Display data from books.db -->
+        <!-- Add "Delete" and "Change" buttons for each record -->
+        <tr>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Author</th>
+            <th class="deleteRecord">Delete Record</th>
+            <th class="changeRecord">Change Record</th>
+        </tr>
+        <!-- Repeat the following row structure for each book record -->
+        <tr>
+            <td>Book Title</td>
+            <td>Book Description</td>
+            <td>Book Author</td>
+            <td><button onclick="deleteRecord(1)">Delete</button></td>
+            <td><button onclick="changeRecord(1)">Change</button></td>
+        </tr>
+    </table>
+
+    <!-- Popup form for changing record -->
+    <div id="changeRecordPopup">
+        <form id="changeRecordForm">
+            <!-- Form fields for title, description, and author -->
+            <button type="button" onclick="declineChange()">Decline</button>
+            <button type="submit" onclick="submitChange()">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        // JavaScript functions for handling delete and change actions
+        function deleteRecord(id) {
+            // Send a DELETE request to the server
+            // Handle the response as needed
+        }
+
+        function changeRecord(id) {
+            // Display the changeRecordPopup and pre-fill the form with existing data
+        }
+
+        function declineChange() {
+            // Close the changeRecordPopup
+        }
+
+        function submitChange() {
+            // Send a PUT request to the server with updated data
+            // Handle the response as needed
+        }
+    </script>
+</body>
+</html>

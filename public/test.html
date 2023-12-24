@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Library</title>
+    <style>
+        /* Add your CSS styles for better appearance */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .book-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .book {
+            border: 1px solid #ccc;
+            margin: 5px;
+            padding: 10px;
+        }
+
+        #search-bar {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Search bar for filtering books -->
+<input type="text" id="search-bar" placeholder="Search by title" oninput="filterBooks()">
+
+<!-- List of books with a unique ID -->
+<ul id="book-list" class="book-list">
+    <!-- Each book is represented as a list item -->
+    <!-- Include more books based on your dataset -->
+    <li class="book">Book Title 1</li>
+    <li class="book">Book Title 2</li>
+    <!-- ... -->
+</ul>
+
+<script>
+    // Function to filter books based on the search input
+    function filterBooks() {
+        // Get the search input value
+        var filter = document.getElementById('search-bar').value.toUpperCase();
+
+        // Get the list of books
+        var books = document.getElementById('book-list').getElementsByTagName('li');
+
+        // Loop through each book and hide those that don't match the search query
+        for (var i = 0; i < books.length; i++) {
+            var title = books[i].innerText.toUpperCase();
+            if (title.indexOf(filter) > -1) {
+                books[i].style.display = '';
+            } else {
+                books[i].style.display = 'none';
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
