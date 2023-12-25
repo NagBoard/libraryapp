@@ -24,3 +24,84 @@ window.addEventListener('DOMContentLoaded', event => {
     }
 
 });
+
+fetch('/reservations_active')
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('active-reservations-table').tBodies[0];
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(text => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    })
+    .catch(error => console.error('Error:', error));
+
+fetch('/reservations_closed')
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('closed-reservations-table').tBodies[0];
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(text => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    })
+    .catch(error => console.error('Error:', error));
+
+fetch('/borrowed_books_active')
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('active-borrowed-books-table').tBodies[0];
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(text => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    })
+    .catch(error => console.error('Error:', error));
+
+fetch('/borrowed_books_closed')
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('closed-borrowed-books-table').tBodies[0];
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(text => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    })
+    .catch(error => console.error('Error:', error));
+
+
+fetch('/available_books')
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('available-books-table').tBodies[0];
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(text => {
+                const td = document.createElement('td');
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    })
+    .catch(error => console.error('Error:', error));
