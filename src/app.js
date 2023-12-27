@@ -10,27 +10,13 @@ const bcrypt = require('bcrypt');
 const flash = require('express-flash'); 
 const session = require('express-session');
 const passport = require('passport');
+const methodOverride = require('method-override');
 
 const app = express();
 const server = http.createServer(app);
 
-const initializePassport = require('./passport-config');
-initializePassport(
-    passport,
-    async username => {
-        return new Promise((resolve, reject) => {
-            db.get('SELECT * FROM user WHERE username = ?', [username], (err, row) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(row);
-                }
-            });
-        });
-    }
-);
-
 const publicDirectoryPath = path.join(__dirname, '..', 'public');
+const viewsDirectoryPath = path.join(__dirname, '..', 'views');
 app.use(express.static(publicDirectoryPath));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -42,13 +28,34 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(methodOverride('_method'));
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'html');
+app.set('views', viewsDirectoryPath);
 
 const dbFilePath = path.join(__dirname, '..', 'db', 'main.db');
 const db = new sqlite3.Database(dbFilePath);
 
+const initializePassport = require('./passport-config');
+initializePassport(
+    passport, 
+    username => {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT * FROM user WHERE username = ?', username, (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+    }
+);
+
+
 app.get('/', (req, res) => {
-    const mainHtmlPath = path.join(publicDirectoryPath, 'main.html');
-    res.sendFile(mainHtmlPath);
+    const mainHtmlPath = path.join(viewsDirectoryPath, 'index.html');
+    res.render(mainHtmlPath);
 });
 
 app.get('/reservations_active', (req, res) => {
@@ -101,11 +108,21 @@ app.get('/available_books', (req, res) => {
     });
 });
 
+app.get('/login', checkNotAuthenticated, (req, res) => {
+    const loginHtmlPath = path.join(viewsDirectoryPath, 'login');
+    res.render(loginHtmlPath);
+});
+
 app.post('/login', passport.authenticate('local', {
-    successRedirect: '/',
-    failureRedirect: '/login.html',
+    successRedirect: '/hi',
+    failureRedirect: '/login',
     failureFlash: true
 }));
+
+app.get('/register', checkNotAuthenticated, (req, res) => {
+    const registerHtmlPath = path.join(viewsDirectoryPath, 'register');
+    res.render(registerHtmlPath);
+});
 
 app.post('/register', async (req, res) => {
     try {
@@ -123,17 +140,45 @@ app.post('/register', async (req, res) => {
             function(err) {
                 if (err) {
                     console.log(err.message);
-                    res.redirect('/register.html');
+                    res.redirect('/register');
                 } else {
                     console.log(`A new user with id ${this.lastID} has been inserted.`);
-                    res.redirect('/login.html');
+                    res.redirect('/login');
                 }
             }
         );
     } catch {
-        res.redirect('/register.html');
+        res.redirect('/register');
     }
 });
+
+app.delete('/logout', (req, res) => {
+    req.logout(() => {});
+    res.redirect('/login'); 
+});
+
+app.get('/hi', (req, res) => {
+    if (req.user) {
+        res.render('hi', { username: req.user.username });
+    } else {
+        res.render('hi', { username: 'guest' });
+    }
+});
+
+
+function checkAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    res.redirect('/login');
+}
+
+function checkNotAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        return res.redirect('/');
+    }
+    next();
+}
 
 server.listen(3000, () => {
     console.log('Server is running on port 3000');
