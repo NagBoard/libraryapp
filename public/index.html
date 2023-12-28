@@ -28,12 +28,58 @@
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
                 <div class="collapse navbar-collapse" id="navbarResponsive">
                     <ul class="navbar-nav ms-auto">
+                        <% if (!isUserAuthenticated) { %>
                         <li class="nav-item"><a class="nav-link" href="register">Sign Up</a></li>
+                        <% } %>
+                        <% if (!isUserAuthenticated) { %>
                         <li class="nav-item"><a class="nav-link" href="login">Log In</a></li>
+                        <% } %>
+                        <% if (isUserAuthenticated) { %>
+                        <li class="nav-item"><a class="nav-link" href="redirect">Personal Account</a></li>
+                        <% } %>
+                        <% if (isUserAuthenticated) { %>
+                        <li class="nav-item"><a class="nav-link" href="#" id="logoutLink">Log Out</a></li>
+                        <% } %>
                     </ul>
                 </div>
             </div>
         </nav>
+        <li class="nav-item"><a class="nav-link" href="#" id="logoutLink">Log Out</a></li>
+
+        <script>
+            function logout() {
+                const logoutLink = document.getElementById('logoutLink');
+                if (logoutLink) {
+                    logoutLink.addEventListener('click', function(event) {
+                        event.preventDefault();
+        
+                        console.log('Logout link clicked'); // Debug log
+        
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/logout?_method=DELETE';
+        
+                        // Create a hidden input element for the _method override
+                        var methodOverrideInput = document.createElement('input');
+                        methodOverrideInput.type = 'hidden';
+                        methodOverrideInput.name = '_method';
+                        methodOverrideInput.value = 'DELETE';
+        
+                        // Append the method override input to the form
+                        form.appendChild(methodOverrideInput);
+        
+                        console.log('Form created'); // Debug log
+        
+                        document.body.appendChild(form);
+                        form.submit();
+        
+                        console.log('Form submitted'); // Debug log
+                    });
+                }
+            }
+        
+            window.onload = logout;
+        </script>
         <!-- Header-->
         <header class="masthead text-center text-white">
             <div class="masthead-content">
@@ -41,7 +87,6 @@
                     <h1 class="masthead-heading mb-0">Koenigsegg library</h1>
                     <h2 class="masthead-subheading mb-0">We provide knowledge</h2>
                     <a class="btn btn-primary btn-xl rounded-pill mt-5" href="#scroll">Learn More</a>
-                    <a class="btn btn-primary btn-xl rounded-pill mt-5" href="dev_menu.html" style="margin-left: 50px;">Menu</a>
                 </div>
             </div>
             <div class="bg-circle-1 bg-circle"></div>
@@ -49,7 +94,8 @@
             <div class="bg-circle-3 bg-circle"></div>
             <div class="bg-circle-4 bg-circle"></div>
         </header>
-        <!-- Content section 1-->
+        
+        <!-- Content section 2-->
         <section id="scroll">
             <div class="container px-5">
                 <div class="row gx-5 align-items-center">
@@ -65,7 +111,8 @@
                 </div>
             </div>
         </section>
-        <!-- Content section 2-->
+
+        <!-- Content section 3-->
         <section>
             <div class="container px-5">
                 <div class="row gx-5 align-items-center">
@@ -79,7 +126,7 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </section> 
         <!-- Content section 3-->
         <section>
             <div class="container px-5">
