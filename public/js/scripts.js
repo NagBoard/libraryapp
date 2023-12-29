@@ -6,6 +6,8 @@
 // 
 // Scripts
 // 
+let userId;
+
 
 window.addEventListener('DOMContentLoaded', event => {
 
@@ -24,6 +26,79 @@ window.addEventListener('DOMContentLoaded', event => {
     }
 
 });
+
+fetch('/manage_reservations/data')
+.then(response => response.json())
+.then(data => {
+    const rows = data.rows;
+    const userId = data.userId; // Extract userId from the data
+    const tableBody = document.getElementById('manage-reservations-table').tBodies[0];
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        const fields = ['reader_username', 'librarian_username', 'title', 'author', 'status', 'is_terminated', 'request_date', 'confirmation_date', 'last_status_update'];
+        fields.forEach(field => {
+            const td = document.createElement('td');
+            td.textContent = row[field];
+            tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+    });
+})
+.catch(error => console.error('Error:', error));
+
+fetch('/manage_borrows/data')
+.then(response => response.json())
+.then(data => {
+    const rows = data.rows;
+    const userId = data.userId; // Extract userId from the data
+    const tableBody = document.getElementById('manage-borrowed-books-table').tBodies[0];
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        const fields = ['id', 'reader_username', 'issuer_username', 'receiver_username', 'title', 'author', 'status', 'borrow_date', 'return_date'];
+        fields.forEach(field => {
+            const td = document.createElement('td');
+            td.textContent = row[field];
+            tr.appendChild(td);
+        });
+
+        // Create "Become Receiver" button
+        const receiverButton = document.createElement('button');
+        receiverButton.textContent = 'Become Receiver';
+        receiverButton.addEventListener('click', () => {
+            fetch(`/manage_borrows/data/${row.id}/receiver`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId: userId}), // replace 'yourUserId' with the actual user id
+            })
+            .then(response => response.json())
+            .catch(error => console.error('Error:', error));
+        });
+        tr.appendChild(receiverButton);
+
+        // Create "Change Status" button
+        const statusButton = document.createElement('button');
+        statusButton.textContent = 'Change Status';
+        statusButton.addEventListener('click', () => {
+            const newStatus = row.status === 'Borrowed' ? 'Returned' : 'Borrowed';
+            fetch(`/manage_borrows/data/${row.id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: newStatus }),
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        });
+        tr.appendChild(statusButton);
+
+        tableBody.appendChild(tr);
+    });
+})
+.catch(error => console.error('Error:', error));
 
 fetch('/reservations_active')
     .then(response => response.json())
@@ -247,11 +322,65 @@ document.getElementById('add-book').onclick = function() {
             },
             body: JSON.stringify(newBook),
         })
-        .then(response => {
-            if (response.ok) {
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
                 console.log('Book added successfully');
+                // Append the new book to the book table
+                const bookTableBody = document.querySelector('#book-table tbody');
+                const bookRow = document.createElement('tr');
+                bookRow.id = `book-${data.id}`;
+
+                const titleCell = document.createElement('td');
+                titleCell.textContent = newBook.title;
+                bookRow.appendChild(titleCell);
+
+                const authorCell = document.createElement('td');
+                authorCell.textContent = newBook.author;
+                bookRow.appendChild(authorCell);
+
+                const descriptionCell = document.createElement('td');
+                descriptionCell.textContent = newBook.description;
+                bookRow.appendChild(descriptionCell);
+
+                const availableCopiesCell = document.createElement('td');
+                availableCopiesCell.textContent = newBook.available_copies;
+                bookRow.appendChild(availableCopiesCell);
+
+                const totalCopiesCell = document.createElement('td');
+                totalCopiesCell.textContent = newBook.total_copies;
+                bookRow.appendChild(totalCopiesCell);
+
+                // Create the edit button
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.onclick = function() {
+                    // Handle the edit action here
+                };
+                bookRow.appendChild(editButton);
+
+                // Create the delete button
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = function() {
+                    fetch(`/books/${data.id}`, {
+                        method: 'DELETE',
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Book deleted successfully, remove the corresponding row from the table
+                            bookRow.remove();
+                        } else {
+                            console.error('Error deleting book:', response.status);
+                        }
+                    })
+                    .catch(error => console.error('Error deleting book:', error));
+                };
+                bookRow.appendChild(deleteButton);
+
+                bookTableBody.appendChild(bookRow);
             } else {
-                console.error('Error adding book:', response.status);
+                console.error('Error adding book:', data.status);
             }
         })
         .catch(error => console.error('Error adding book:', error));

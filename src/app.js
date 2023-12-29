@@ -96,6 +96,77 @@ app.get('/manage_reservations', checkAuthenticated, checkIsAdminOrLibrarian, (re
     res.render(manageReservationsHtmlPath);
 });
 
+app.get('/manage_reservations/data', checkAuthenticated, checkIsAdminOrLibrarian, (req, res) => {
+    getUserID(req.user.username)
+    .then(userId => {
+        db.all('SELECT userLibrarian.username as librarian_username, userReader.username as reader_username, book.title, book.author, reservation.status, reservation.is_terminated, reservation.request_date, reservation.confirmation_date, reservation.last_status_update, reservation.termination_date FROM reservation LEFT JOIN user as userLibrarian ON reservation.librarian_id = userLibrarian.id INNER JOIN user as userReader ON reservation.reader_id = userReader.id INNER JOIN book ON reservation.book_id = book.id', [], (err, rows) => {
+            if (err) {
+                console.log(err.message);
+            } else {
+                const response = { rows, userId };
+                res.json(response);
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+
+// Function to render the HTML page
+app.get('/manage_borrows', checkAuthenticated, checkIsAdminOrLibrarian, (req, res) => {
+    const manageBorrowsHtmlPath = path.join(publicDirectoryPath, 'manage_borrows'); 
+    res.render(manageBorrowsHtmlPath);
+});
+
+// Function to fetch the data from the database
+app.get('/manage_borrows/data', checkAuthenticated, checkIsAdminOrLibrarian, (req, res) => {
+    getUserID(req.user.username)
+    .then(userId => {
+        db.all('SELECT borrowed_book.id, userReader.username as reader_username, userIssuer.username as issuer_username, userReceiver.username as receiver_username, book.title, book.author, borrowed_book.status, borrowed_book.borrow_date, borrowed_book.return_date, borrowed_book.date_returned FROM borrowed_book INNER JOIN reader ON borrowed_book.reader_id = reader.id LEFT JOIN user as userReader ON reader.id = userReader.id LEFT JOIN librarian as issuerLibrarian ON borrowed_book.issuer_id = issuerLibrarian.id LEFT JOIN librarian as receiverLibrarian ON borrowed_book.receiver_id = receiverLibrarian.id LEFT JOIN user as userIssuer ON issuerLibrarian.id = userIssuer.id LEFT JOIN user as userReceiver ON receiverLibrarian.id = userReceiver.id LEFT JOIN book ON borrowed_book.book_id = book.id', [], (err, rows) => {
+            if (err) {
+                console.log(err.message);
+            } else {
+                const response = { rows, userId };
+                console.log(response);
+                res.json(response);
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+
+// Update receiver id
+app.put('/manage_borrows/data/:id/receiver', (req, res) => {
+    const id = req.params.id;
+    const userId = req.body.userId;
+    const sql = `UPDATE borrowed_book SET receiver_id = ? WHERE id = ?`;
+  
+    db.run(sql, [userId, id], function(err) {
+      if (err) {
+        return console.error(err.message);
+      }
+      res.json({ message: 'Receiver updated successfully' });
+    });
+  });
+  
+  // Update status
+  app.put('/manage_borrows/data/:id/status', (req, res) => {
+    const id = req.params.id;
+    const status = req.body.status;
+    const sql = `UPDATE borrowed_book SET status = ? WHERE id = ?`;
+  
+    db.run(sql, [status, id], function(err) {
+      if (err) {
+        return console.error(err.message);
+      }
+      res.json({ message: 'Status updated successfully' });
+    });
+  });
+  
+
 app.get('/manage_accounts', checkAuthenticated, checkIsAdmin, (req, res) => {
     const manageAccountsHtmlPath = path.join(publicDirectoryPath, 'manage_accounts');
     res.render(manageAccountsHtmlPath);
@@ -408,7 +479,6 @@ function checkLibrarianAccess(req, res, next) {
                 }
                 if (librarianRow) {
                     if (librarianRow.reservation_access === 1) {
-                        console.log('Librarian has reservation access');
                         return next();                                          // If librarian has reservation access, return next()
                     }
                     console.log('Librarian does not have reservation access');
@@ -477,7 +547,6 @@ function checkIsAdminOrLibrarian(req, res, next) {
                         }
                         if (librarianRow) {
                             if (librarianRow.reservation_access === 1) {
-                                console.log('Librarian has reservation access');
                                 return next();                                          // If librarian has reservation access, return next()
                             }
                             console.log('Librarian does not have reservation access');
