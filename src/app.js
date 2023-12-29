@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const flash = require('express-flash'); 
 const session = require('express-session');
 const passport = require('passport');
+const bodyParser = require('body-parser');
 const methodOverride = require('method-override');
 
 const app = express();
@@ -28,13 +29,16 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(methodOverride('_method'));
+app.use(bodyParser.json());
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'html');
 
 const dbFilePath = path.join(__dirname, '..', 'db', 'main.db');
 const db = new sqlite3.Database(dbFilePath);
+db.configure('busyTimeout', 3000);  // Wait for 3 seconds
 
 const initializePassport = require('./passport-config');
+const e = require('express');
 initializePassport(
     passport, 
     username => {
@@ -55,11 +59,6 @@ app.get('/', (req, res) => {
     const mainHtmlPath = path.join(publicDirectoryPath, 'index');
     let isUserAuthenticated = req.isAuthenticated(); // Assuming you're using Passport.js
     res.render(mainHtmlPath, { isUserAuthenticated: isUserAuthenticated });
-});
-
-app.get('/account', checkAuthenticated, (req, res) => {
-    const accountHtmlPath = path.join(publicDirectoryPath, 'account');
-    res.render(accountHtmlPath);
 });
 
 app.get('/booking', checkAuthenticated, (req, res) => {
@@ -87,10 +86,31 @@ app.get('/reader_closed_reservations', checkAuthenticated, (req, res) => {
     res.render(readerClosedReservationsHtmlPath);
 });
 
-app.get('/dev_menu', checkAuthenticated, (req, res) => {
-    const devMenuHtmlPath = path.join(publicDirectoryPath, 'dev_menu');
-    res.render(devMenuHtmlPath);
+app.get('/manage_book_database', checkAuthenticated, checkIsAdminOrLibrarian, (req, res) => {
+    const manageBookDatabaseHtmlPath = path.join(publicDirectoryPath, 'manage_book_database');
+    res.render(manageBookDatabaseHtmlPath);
 });
+
+app.get('/manage_reservations', checkAuthenticated, checkIsAdminOrLibrarian, (req, res) => {
+    const manageReservationsHtmlPath = path.join(publicDirectoryPath, 'manage_reservations');
+    res.render(manageReservationsHtmlPath);
+});
+
+app.get('/manage_accounts', checkAuthenticated, checkIsAdmin, (req, res) => {
+    const manageAccountsHtmlPath = path.join(publicDirectoryPath, 'manage_accounts');
+    res.render(manageAccountsHtmlPath);
+});
+
+app.get('/manage_librarian_access', checkAuthenticated, checkIsAdmin, (req, res) => {
+    const manageLibrarianAccessHtmlPath = path.join(publicDirectoryPath, 'manage_librarian_access');
+    res.render(manageLibrarianAccessHtmlPath);
+});
+
+app.get('/manage_reader_book_count', checkAuthenticated, checkIsAdmin, (req, res) => {
+    const manageReaderBookCountHtmlPath = path.join(publicDirectoryPath, 'manage_reader_book_count');
+    res.render(manageReaderBookCountHtmlPath);
+});
+
 
 app.get('/reader_menu', checkAuthenticated, (req, res) => {
     const readerMenuHtmlPath = path.join(publicDirectoryPath, 'reader_menu');
@@ -106,9 +126,6 @@ app.get('/admin_menu', checkAuthenticated, checkIsAdmin, (req, res) => {
     const adminMenuHtmlPath = path.join(publicDirectoryPath, 'admin_menu');
     res.render(adminMenuHtmlPath);
 });
-
-
-app.use(express.static(publicDirectoryPath));
 
 app.get('/protected', checkAuthenticated, (req, res) => {
     res.json({ message: 'This is a protected route' });
@@ -158,6 +175,8 @@ app.post('/register', async (req, res) => {
     }
 });
 
+app.use(express.static(publicDirectoryPath));
+
 app.delete('/logout', (req, res) => {
     req.logout(() => {});
     res.redirect('/'); 
@@ -176,7 +195,7 @@ app.get('/redirect', checkAuthenticated, checkUserRole, function(req, res, next)
     }
 });
 
-
+/*
 app.get('/reservations_active', (req, res) => {
     db.all('SELECT userReader.username as reader_username, userLibrarian.username as librarian_username, book.title, book.author, reservation.status, reservation.request_date, reservation.confirmation_date, reservation.last_status_update FROM reservation INNER JOIN reader ON reservation.reader_id = reader.id INNER JOIN user as userReader ON reader.id = userReader.id INNER JOIN user as userLibrarian ON reservation.librarian_id = userLibrarian.id INNER JOIN book ON reservation.book_id = book.id WHERE reservation.is_terminated = 0', [], (err, rows) => {
         if (err) {
@@ -186,47 +205,176 @@ app.get('/reservations_active', (req, res) => {
         }
     });
 });
+*/
+
+app.get('/reservations_active', (req, res) => {
+    getUserID(req.user.username)
+    .then(userId => {
+        db.all('SELECT userLibrarian.username as librarian_username, userReader.username as reader_username, book.title, book.author, reservation.status, reservation.request_date, reservation.confirmation_date, reservation.last_status_update, reservation.termination_date FROM reservation LEFT JOIN user as userLibrarian ON reservation.librarian_id = userLibrarian.id INNER JOIN user as userReader ON reservation.reader_id = userReader.id INNER JOIN book ON reservation.book_id = book.id WHERE reservation.is_terminated = 0 AND userReader.id = ?', [userId], (err, rows) => {
+            if (err) {
+                console.log(err.message);
+            } else {
+                res.send(rows);
+            }
+        });
+    })
+    .catch(error => {
+        console.error(error);
+    }); 
+});
 
 app.get('/reservations_closed', (req, res) => {
-    db.all('SELECT userReader.username as reader_username, userLibrarian.username as librarian_username, book.title, book.author, reservation.status, reservation.request_date, reservation.confirmation_date, reservation.last_status_update FROM reservation INNER JOIN reader ON reservation.reader_id = reader.id INNER JOIN user as userReader ON reader.id = userReader.id INNER JOIN user as userLibrarian ON reservation.librarian_id = userLibrarian.id INNER JOIN book ON reservation.book_id = book.id WHERE reservation.is_terminated = 1', [], (err, rows) => {
-        if (err) {
-            console.log(err.message);
-        } else {
-            res.send(rows);
-        }
-    });
+    getUserID(req.user.username)
+    .then(userId => {
+        db.all('SELECT userLibrarian.username as librarian_username, userReader.username as reader_username, book.title, book.author, reservation.status, reservation.request_date, reservation.confirmation_date, reservation.last_status_update, reservation.termination_date FROM reservation LEFT JOIN user as userLibrarian ON reservation.librarian_id = userLibrarian.id INNER JOIN user as userReader ON reservation.reader_id = userReader.id INNER JOIN book ON reservation.book_id = book.id WHERE reservation.is_terminated = 1 AND userReader.id = ?', [userId], (err, rows) => {
+            if (err) {
+                console.log(err.message);
+            } else {
+                res.send(rows);
+            }
+        });
+    })
+    .catch(error => {
+        console.error(error);
+    }); 
 });
 
 app.get('/borrowed_books_active', (req, res) => {
-    db.all('SELECT borrowed_book.id, userReader.username as reader_username, userIssuer.username as issuer_username, userReceiver.username as receiver_username, book.title, borrowed_book.status, borrowed_book.borrow_date, borrowed_book.return_date FROM borrowed_book INNER JOIN reader ON borrowed_book.reader_id = reader.id INNER JOIN user as userReader ON reader.id = userReader.id INNER JOIN librarian as issuerLibrarian ON borrowed_book.issuer_id = issuerLibrarian.id INNER JOIN librarian as receiverLibrarian ON borrowed_book.receiver_id = receiverLibrarian.id INNER JOIN user as userIssuer ON issuerLibrarian.id = userIssuer.id INNER JOIN user as userReceiver ON receiverLibrarian.id = userReceiver.id INNER JOIN book ON borrowed_book.book_id = book.id WHERE borrowed_book.status = "Borrowed"', [], (err, rows) => {
-        if (err) {
-            console.log(err.message);
-        } else {
-            res.send(rows);
-        }
-    });
+    getUserID(req.user.username)
+    .then(userId => {
+        db.all('SELECT borrowed_book.id, userReader.username as reader_username, userIssuer.username as issuer_username, userReceiver.username as receiver_username, book.title, book.author, borrowed_book.status, borrowed_book.borrow_date, borrowed_book.return_date, borrowed_book.date_returned FROM borrowed_book INNER JOIN reader ON borrowed_book.reader_id = reader.id LEFT JOIN user as userReader ON reader.id = userReader.id LEFT JOIN librarian as issuerLibrarian ON borrowed_book.issuer_id = issuerLibrarian.id LEFT JOIN librarian as receiverLibrarian ON borrowed_book.receiver_id = receiverLibrarian.id LEFT JOIN user as userIssuer ON issuerLibrarian.id = userIssuer.id LEFT JOIN user as userReceiver ON receiverLibrarian.id = userReceiver.id LEFT JOIN book ON borrowed_book.book_id = book.id WHERE borrowed_book.status = "Borrowed" AND userReader.id = ?', [userId], (err, rows) => {
+            if (err) {
+                console.log(err.message);
+            } else {
+                res.send(rows);
+            }
+        });
+    })
+    .catch(error => {
+        console.error(error);
+    }); 
 });
 
 app.get('/borrowed_books_closed', (req, res) => {
-    db.all('SELECT borrowed_book.id, userReader.username as reader_username, userIssuer.username as issuer_username, userReceiver.username as receiver_username, book.title, borrowed_book.status, borrowed_book.borrow_date, borrowed_book.return_date, borrowed_book.date_returned FROM borrowed_book INNER JOIN reader ON borrowed_book.reader_id = reader.id INNER JOIN user as userReader ON reader.id = userReader.id INNER JOIN librarian as issuerLibrarian ON borrowed_book.issuer_id = issuerLibrarian.id INNER JOIN librarian as receiverLibrarian ON borrowed_book.receiver_id = receiverLibrarian.id INNER JOIN user as userIssuer ON issuerLibrarian.id = userIssuer.id INNER JOIN user as userReceiver ON receiverLibrarian.id = userReceiver.id INNER JOIN book ON borrowed_book.book_id = book.id WHERE borrowed_book.status = "Returned"', [], (err, rows) => {
-        if (err) {
-            console.log(err.message);
-        } else {
-            res.send(rows);
-        }
-    });
+    getUserID(req.user.username)
+    .then(userId => {
+        db.all('SELECT borrowed_book.id, userReader.username as reader_username, userIssuer.username as issuer_username, userReceiver.username as receiver_username, book.title, book.author, borrowed_book.status, borrowed_book.borrow_date, borrowed_book.return_date, borrowed_book.date_returned FROM borrowed_book INNER JOIN reader ON borrowed_book.reader_id = reader.id LEFT JOIN user as userReader ON reader.id = userReader.id LEFT JOIN librarian as issuerLibrarian ON borrowed_book.issuer_id = issuerLibrarian.id LEFT JOIN librarian as receiverLibrarian ON borrowed_book.receiver_id = receiverLibrarian.id LEFT JOIN user as userIssuer ON issuerLibrarian.id = userIssuer.id LEFT JOIN user as userReceiver ON receiverLibrarian.id = userReceiver.id LEFT JOIN book ON borrowed_book.book_id = book.id WHERE borrowed_book.status = "Returned" AND userReader.id = ?', [userId], (err, rows) => {
+            if (err) {
+                console.log(err.message);
+            } else {
+                res.send(rows);
+            }
+        });
+    })
+    .catch(error => {
+        console.error(error);
+    }); 
 });
 
 app.get('/available_books', (req, res) => {
-    db.all('SELECT title, author, description, book_type, available_copies FROM book', [], (err, rows) => {
+    getUserID(req.user.username)
+        .then(userId => {
+            db.all('SELECT id as book_id, title, author, description, book_type, available_copies FROM book', [], (err, rows) => {
+                if (err) {
+                    console.log(err.message);
+                } else {
+                    // Modify the rows to include the reader_id
+                    const modifiedRows = rows.map(row => ({
+                        ...row,
+                        reader_id: userId,
+                    }));
+
+                    res.send(modifiedRows);
+                }
+            });
+        })
+        .catch(error => console.error('Error:', error));
+});
+
+app.post('/decrement_book/:bookId', (req, res) => {
+    const bookId = req.params.bookId;
+    db.run('UPDATE book SET available_copies = available_copies - 1 WHERE id = ?', [bookId], function(err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Book not found' });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.post('/create_reservation', (req, res) => {
+    // Extract the data from the request body
+    const { book_id, reader_id, request_date } = req.body;
+    const last_status_update = request_date;
+
+    // Insert the reservation into the database
+    db.run('INSERT INTO reservation (book_id, reader_id, request_date, last_status_update) VALUES (?, ?, ?, ?)', [book_id, reader_id, request_date, last_status_update], (err) => {
         if (err) {
             console.log(err.message);
+            res.status(500).json({ message: 'Error creating reservation' });  // Send back JSON
+        } else {
+            res.json({ message: 'Reservation created successfully' });  // Send back JSON
+        }
+    });
+});
+
+app.get('/books', (req, res) => {
+    db.all('SELECT * FROM book', (err, rows) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).send(err);
         } else {
             res.send(rows);
         }
     });
 });
 
+app.put('/books/:id', (req, res) => {
+    const { title, author, description, available_copies, total_copies } = req.body;
+    const { id } = req.params;
+
+    const sql = `
+        UPDATE book
+        SET title = ?, author = ?, description = ?, available_copies = ?, total_copies = ?
+        WHERE id = ?
+    `;
+
+    db.run(sql, [title, author, description, available_copies, total_copies, id], function(err) {
+        if (err) {
+            console.error(err.message);
+            res.status(500).send(err);
+        } else if (this.changes === 0) {
+            res.status(404).send({ message: 'Book not found' });
+        } else {
+            res.status(200).send({ message: 'Book updated successfully' });
+        }
+    });
+});
+
+app.post('/books', (req, res) => {
+    const newBook = req.body;
+    db.run('INSERT INTO book (title, author, description, available_copies, total_copies) VALUES (?, ?, ?, ?, ?)', [newBook.title, newBook.author, newBook.description, newBook.available_copies, newBook.total_copies], function(err) {
+        if (err) {
+            res.status(500).send(err.message);
+        } else {
+            res.status(200).send({ id: this.lastID });
+        }
+    });
+});
+
+app.delete('/books/:id', (req, res) => {
+    const bookId = req.params.id;
+    db.run('DELETE FROM book WHERE id = ?', bookId, function(err) {
+        if (err) {
+            console.error(err.message);
+            res.status(500).send(err);
+        } else {
+            res.send({ message: 'Book deleted successfully', rowsAffected: this.changes });
+        }
+    });
+});
 
 function checkAuthenticated(req, res, next) {
     if (req.isAuthenticated()) {
@@ -399,7 +547,20 @@ function checkUserRole(req, res, next) {
     });
 }
 
-
+function getUserID(username) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM user WHERE username = ?', [username], (err, user) => {
+            if (err) {
+                console.log(err.message);
+                reject(err);
+            } else if (user) {
+                resolve(user.id);
+            } else {
+                reject(new Error('User not found'));
+            }
+        });
+    });   
+}
 
 
 server.listen(3000, () => {
